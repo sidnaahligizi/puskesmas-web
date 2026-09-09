@@ -5,42 +5,104 @@ import { revalidatePath } from "next/cache";
 
 export default async function AdminDashboard() {
   const cookieStore = await cookies();
-  if (!cookieStore.get("is_admin")) {
-    redirect("/login");
-  }
+  if (!cookieStore.get("is_admin")) redirect("/login");
 
+  // Ambil Data Statistik & Pengaturan Saat Ini
+  const { rows: viewsRow } = await db.execute("SELECT value FROM site_settings WHERE key = 'page_views'");
+  const totalViews = viewsRow[0]?.value || 0;
+  
+  const { rows: brandRow } = await db.execute("SELECT value FROM site_settings WHERE key = 'brand_name'");
+  const currentBrand = brandRow[0]?.value || "Puskesmas Nelayan";
+
+  // FUNGSI 1: Simpan Berita & Foto
   async function addPost(formData: FormData) {
     "use server";
     const title = formData.get("title") as string;
     const content = formData.get("content") as string;
     const type = formData.get("type") as string;
-    const slug = title.toLowerCase().replace(/ /g, "-") + "-" + Date.now();
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now();
+
+    // Proses Upload Foto menjadi Base64 (Teks)
+    let base64Image = null;
+    const imageFile = formData.get("image") as File;
+    if (imageFile && imageFile.size > 0) {
+      const buffer = Buffer.from(await imageFile.arrayBuffer());
+      base64Image = `data:${imageFile.type};base64,${buffer.toString("base64")}`;
+    }
 
     await db.execute({
-      sql: "INSERT INTO posts (title, slug, type, content) VALUES (?, ?, ?, ?)",
-      args: [title, slug, type, content],
+      sql: "INSERT INTO posts (title, slug, type, content, image_url) VALUES (?, ?, ?, ?, ?)",
+      args: [title, slug, type, content, base64Image],
+    });
+    revalidatePath("/");
+  }
+
+  // FUNGSI 2: Update Brand
+  async function updateBrand(formData: FormData) {
+    "use server";
+    const newBrand = formData.get("brand_name") as string;
+    await db.execute({
+      sql: "UPDATE site_settings SET value = ? WHERE key = 'brand_name'",
+      args: [newBrand]
     });
     revalidatePath("/");
   }
 
   return (
-    <div className="p-10 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Dashboard Admin</h1>
-        <a href="/" className="text-blue-500 underline">Lihat Website</a>
+    <div className="p-4 md:p-10 max-w-6xl mx-auto bg-gray-50 min-h-screen">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <h1 className="text-3xl font-bold text-gray-800">Panel Admin Canggih</h1>
+        <div className="flex gap-4">
+          <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg font-bold shadow">
+            👁️ Total Dilihat: {totalViews} kali
+          </div>
+          <a href="/" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow">Lihat Website</a>
+        </div>
       </div>
 
-      <div className="bg-white p-6 rounded shadow-md border">
-        <h2 className="text-xl font-semibold mb-4 text-black">Tambah Konten Baru</h2>
-        <form action={addPost} className="space-y-4">
-          <input name="title" placeholder="Judul Berita" required className="w-full border p-2 rounded text-black" />
-          <select name="type" className="w-full border p-2 rounded text-black">
-            <option value="Berita">Berita</option>
-            <option value="Pengumuman">Pengumuman</option>
-          </select>
-          <textarea name="content" placeholder="Isi Berita..." rows={5} required className="w-full border p-2 rounded text-black" />
-          <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded">Simpan & Publikasikan</button>
-        </form>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Kolom Kiri: Form Berita */}
+        <div className="md:col-span-2 bg-white p-6 rounded-xl shadow-md border border-gray-200">
+          <h2 className="text-xl font-bold mb-4 text-black border-b pb-2">✍️ Tambah Konten Baru</h2>
+          <form action={addPost} className="space-y-4">
+            <div>
+              <label className="block text-gray-700 text-sm font-bold mb-1">Judul Konten</label>
+              <input name="title" required className="w-full border p-3 rounded-lg text-black bg-gray-50" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-gray-700 text-sm font-bold mb-1">Kategori</label>
+                <select name="type" className="w-full border p-3 rounded-lg text-black bg-gray-50">
+                  <option value="Berita">Berita</option>
+                  <option value="Pengumuman">Pengumuman</option>
+                  <option value="Layanan">Layanan</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-gray-700 text-sm font-bold mb-1">Upload Foto (Opsional)</label>
+                {/* Catatan: Karena kita simpan di DB, disarankan ukuran foto di bawah 2MB */}
+                <input type="file" name="image" accept="image/*" className="w-full border p-2 rounded-lg text-black bg-gray-50" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-gray-700 text-sm font-bold mb-1">Isi Konten (HTML Diizinkan)</label>
+              <textarea name="content" rows={6} required className="w-full border p-3 rounded-lg text-black bg-gray-50" />
+            </div>
+            <button type="submit" className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700 transition">Publikasikan Sekarang</button>
+          </form>
+        </div>
+
+        {/* Kolom Kanan: Pengaturan Brand */}
+        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200 h-fit">
+          <h2 className="text-xl font-bold mb-4 text-black border-b pb-2">⚙️ Pengaturan Web</h2>
+          <form action={updateBrand} className="space-y-4">
+            <div>
+              <label className="block text-gray-700 text-sm font-bold mb-1">Nama Brand Puskesmas</label>
+              <input name="brand_name" defaultValue={currentBrand} required className="w-full border p-3 rounded-lg text-black bg-gray-50" />
+            </div>
+            <button type="submit" className="w-full bg-yellow-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-yellow-600 transition">Update Nama</button>
+          </form>
+        </div>
       </div>
     </div>
   );
