@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script"; // <-- Perbaikan 1: Mengimpor komponen Script dari Next.js
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,9 +19,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {children}
-        <script src="https://pkm-alunalun-dinkes.gresikkab.go.id/backend/assets/js/jquery.min.js" strategy="beforeInteractive" />
-        <script src="https://pkm-alunalun-dinkes.gresikkab.go.id/frontend/assets/js/plugins.js" strategy="lazyOnload" />
-        <script src="https://pkm-alunalun-dinkes.gresikkab.go.id/frontend/assets/js/theme.js" strategy="lazyOnload" />
+        {/* Perbaikan 2: Menggunakan huruf S besar untuk memanggil komponen Script */}
+        <Script src="https://pkm-alunalun-dinkes.gresikkab.go.id/backend/assets/js/jquery.min.js" strategy="beforeInteractive" />
+        <Script src="https://pkm-alunalun-dinkes.gresikkab.go.id/frontend/assets/js/plugins.js" strategy="lazyOnload" />
+        <Script src="https://pkm-alunalun-dinkes.gresikkab.go.id/frontend/assets/js/theme.js" strategy="lazyOnload" />
       </body>
     </html>
   );
