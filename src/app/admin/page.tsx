@@ -42,7 +42,6 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
     redirect("/admin?tab=slider");
   }
 
-  // FUNGSI SIMPAN MENU (Diperbarui dengan parent_id)
   async function saveMenu(formData: FormData) {
     "use server";
     const id = formData.get("id") as string;
@@ -176,17 +175,16 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
 
     if (actionParam === 'add' || actionParam === 'edit') {
       let editData: any = {};
-      let parentMenus = [];
+      let parentMenus: any[] = []; // PERBAIKAN: Menambahkan tipe any[]
 
       if (actionParam === 'edit' && idParam) {
         const { rows } = await db.execute({ sql: `SELECT * FROM ${tableName} WHERE id = ?`, args: [idParam] });
         if (rows.length > 0) editData = rows[0];
       }
 
-      // Khusus untuk Menu, ambil daftar Menu Utama untuk opsi Parent
       if (tab === 'menu') {
         const { rows } = await db.execute("SELECT id, title FROM menus WHERE parent_id = 0 OR parent_id IS NULL ORDER BY order_num ASC");
-        parentMenus = rows;
+        parentMenus = rows as any[];
       }
 
       mainContent = (
@@ -207,7 +205,6 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
                 <div className="col-md-6"><label className="fw-bold small">Nama Menu</label><input name="title" defaultValue={editData.title} required className="form-control" /></div>
                 <div className="col-md-6"><label className="fw-bold small">URL Link (contoh: /#layanan)</label><input name="link" defaultValue={editData.link} required className="form-control" /></div>
                 
-                {/* FITUR BARU: PILIH INDUK MENU */}
                 <div className="col-md-8">
                   <label className="fw-bold small text-primary">Jadikan Sub-Menu dari: (Opsional)</label>
                   <select name="parent_id" defaultValue={editData.parent_id || 0} className="form-select border-primary">
@@ -235,19 +232,18 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
         </div>
       );
     } else {
-      let rows = [];
+      let rows: any[] = []; // PERBAIKAN: Menambahkan tipe any[]
       if(tab === 'menu') {
-        // Ambil menu dan tampilkan parentnya jika ada
         const res = await db.execute(`
           SELECT m1.*, m2.title as parent_title 
           FROM menus m1 
           LEFT JOIN menus m2 ON m1.parent_id = m2.id 
           ORDER BY m1.parent_id ASC, m1.order_num ASC
         `);
-        rows = res.rows;
+        rows = res.rows as any[];
       } else {
         const res = await db.execute(`SELECT * FROM ${tableName} ORDER BY id DESC`);
-        rows = res.rows;
+        rows = res.rows as any[];
       }
 
       mainContent = (
