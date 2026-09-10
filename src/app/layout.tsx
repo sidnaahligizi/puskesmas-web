@@ -9,9 +9,12 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const { rows } = await db.execute("SELECT * FROM site_settings");
+  const { rows: settingRows } = await db.execute("SELECT * FROM site_settings");
   const settings: Record<string, string> = {};
-  rows.forEach((row: any) => { settings[row.key] = row.value; });
+  settingRows.forEach((row: any) => { settings[row.key] = row.value; });
+
+  // Mengambil menu navigasi dari database
+  const { rows: menus } = await db.execute("SELECT * FROM menus ORDER BY order_num ASC");
 
   const brandName = settings['brand_name'] || "Puskesmas Nelayan";
   const logoUrl = settings['logo_url'] || "https://lh3.googleusercontent.com/d/1lmHDe6r7V4bp3xdRNqfQyuzqREGYe29o";
@@ -23,18 +26,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
         <style dangerouslySetInnerHTML={{ __html: `
-          body { background-color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+          body { background-color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; scroll-behavior: smooth; }
           .top-bar { background-color: #3b82f6; color: white; padding: 8px 0; font-size: 0.85rem; }
           .navbar { background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 15px 0; }
           .nav-link { font-weight: 600; color: #333 !important; margin: 0 5px; transition: 0.3s; }
           .nav-link:hover { color: #3b82f6 !important; }
-          
-          /* FIX DROPDOWN NEXT.JS */
-          @media (min-width: 992px) {
-            .dropdown:hover .dropdown-menu { display: block; margin-top: 0; animation: fadeIn 0.3s ease; }
-          }
-          @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-          
           .footer-dark { background-color: #1e293b; color: #cbd5e1; padding: 60px 0 20px; }
           .content-min-height { min-height: 70vh; padding-top: 130px; }
           .social-circle { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); border-radius: 50%; transition: 0.3s; color: white; text-decoration: none; }
@@ -42,7 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         `}} />
       </head>
       <body>
-        <div className="top-bar fixed-top">
+        <div className="public-topbar top-bar fixed-top">
           <div className="container d-flex justify-content-between align-items-center flex-wrap">
             <div><i className="fa-solid fa-location-dot me-2"></i>{settings['address']}</div>
             <div className="d-flex gap-4">
@@ -52,7 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </div>
 
-        <nav className="navbar navbar-expand-lg fixed-top" style={{ marginTop: '35px' }}>
+        <nav className="public-navbar navbar navbar-expand-lg fixed-top" style={{ marginTop: '35px' }}>
           <div className="container">
             <Link href="/" className="navbar-brand d-flex align-items-center">
               <img src={logoUrl} alt="Logo" height="50" className="me-2" />
@@ -63,26 +59,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </button>
             <div className="collapse navbar-collapse" id="navbarNav">
               <ul className="navbar-nav ms-auto align-items-center">
-                <li className="nav-item"><Link className="nav-link" href="/">Home</Link></li>
-                <li className="nav-item dropdown">
-                  <span className="nav-link dropdown-toggle cursor-pointer" style={{cursor: 'pointer'}}>Profil</span>
-                  <ul className="dropdown-menu border-0 shadow-sm rounded-3">
-                    <li><Link className="dropdown-item py-2" href="/#visi-misi">Visi & Misi</Link></li>
-                    <li><Link className="dropdown-item py-2" href="#">Struktur Organisasi</Link></li>
-                  </ul>
-                </li>
-                <li className="nav-item dropdown">
-                  <span className="nav-link dropdown-toggle cursor-pointer" style={{cursor: 'pointer'}}>Layanan</span>
-                  <ul className="dropdown-menu border-0 shadow-sm rounded-3">
-                    <li><Link className="dropdown-item py-2" href="#">Layanan Medis</Link></li>
-                    <li><Link className="dropdown-item py-2" href="#">Gizi & Anak</Link></li>
-                  </ul>
-                </li>
-                <li className="nav-item"><Link className="nav-link" href="/#berita">Berita</Link></li>
-                <li className="nav-item"><Link className="nav-link" href="#">PPID</Link></li>
+                {/* MENU DINAMIS DARI DATABASE */}
+                {menus.map((m: any) => (
+                  <li className="nav-item" key={m.id}>
+                    <Link className="nav-link" href={m.link}>{m.title}</Link>
+                  </li>
+                ))}
+                
                 <li className="nav-item ms-lg-3 mt-3 mt-lg-0">
                   <a className="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" href={settings['action_link'] || '#'} target="_blank">
-                    {settings['action_title'] || 'Daftar Sekarang'}
+                    {settings['action_title'] || 'Daftar Konsultasi Online'}
                   </a>
                 </li>
               </ul>
@@ -90,11 +76,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </nav>
 
-        <div className="content-min-height">
+        <div className="public-content content-min-height">
           {children}
         </div>
 
-        <footer className="footer-dark">
+        <footer className="public-footer footer-dark">
           <div className="container">
             <div className="row g-4 mb-5">
               <div className="col-lg-5">
