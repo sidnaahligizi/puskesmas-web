@@ -2,14 +2,15 @@ import { db } from "../lib/db";
 import Link from "next/link";
 
 export default async function Home() {
-  // 1. Catat Kunjungan (Views) ke Database Turso
   await db.execute("UPDATE site_settings SET value = CAST(value AS INTEGER) + 1 WHERE key = 'page_views'");
 
-  // 2. Ambil Statistik View
-  const { rows: viewsRow } = await db.execute("SELECT value FROM site_settings WHERE key = 'page_views'");
-  const totalViews = viewsRow[0]?.value || 0;
+  // PERBAIKAN: Membungkus hasil database dengan String()
+  const { rows: brandRow } = await db.execute("SELECT value FROM site_settings WHERE key = 'brand_name'");
+  const brandName = String(brandRow[0]?.value || "Puskesmas Nelayan");
 
-  // 3. Ambil Data Program/Berita
+  const { rows: viewsRow } = await db.execute("SELECT value FROM site_settings WHERE key = 'page_views'");
+  const totalViews = String(viewsRow[0]?.value || "0");
+
   const { rows: program } = await db.execute("SELECT * FROM posts ORDER BY id DESC LIMIT 6");
 
   const linkWa = "https://wa.me/6285536666320";
@@ -21,7 +22,7 @@ export default async function Home() {
         <div className="container">
           <Link href="/" className="navbar-brand fw-bold text-primary d-flex align-items-center">
             <img src="https://lh3.googleusercontent.com/d/1lmHDe6r7V4bp3xdRNqfQyuzqREGYe29o" alt="Logo Puskesmas Nelayan" className="me-2" />
-            Puskesmas Nelayan
+            {brandName}
           </Link>
           <button className="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span className="navbar-toggler-icon"></span>
@@ -31,7 +32,6 @@ export default async function Home() {
               <li className="nav-item"><Link className="nav-link" href="#home">Beranda</Link></li>
               <li className="nav-item"><Link className="nav-link" href="#program">Program</Link></li>
               <li className="nav-item"><Link className="nav-link" href="#keunggulan">Keunggulan</Link></li>
-              {/* Link ke halaman admin login */}
               <li className="nav-item"><Link className="nav-link fw-bold text-primary" href="/login"><i className="fa-solid fa-lock me-1"></i> Admin</Link></li>
               <li className="nav-item ms-lg-3 mt-3 mt-lg-0">
                 <a className="btn btn-wa rounded-pill px-4 py-2" href={linkWa} target="_blank">
@@ -49,7 +49,7 @@ export default async function Home() {
           <div className="container">
             <h1 className="display-4 fw-bold mb-4">Solusi Kesehatan Tepat untuk Masyarakat Nelayan</h1>
             <p className="lead mb-4 px-md-5 fw-light mx-auto" style={{ maxWidth: '800px', fontSize: '1.15rem' }}>
-              Bersama tenaga kesehatan tepercaya di Puskesmas Nelayan Kabupaten Gresik, kami menghadirkan pelayanan medis dan pendampingan nutrisi. Solusi nyata untuk tumbuh kembang anak, layanan kesehatan keluarga, hingga terapi penyakit klinis.
+              Bersama tenaga kesehatan tepercaya di {brandName}, kami menghadirkan pelayanan medis dan pendampingan nutrisi. Solusi nyata untuk tumbuh kembang anak, layanan kesehatan keluarga, hingga terapi penyakit klinis.
             </p>
             <div className="d-grid gap-3 d-sm-flex justify-content-sm-center mb-5">
               <a href="#program" className="btn btn-outline-light btn-lg px-5 rounded-pill shadow-sm">Jelajahi Program</a>
@@ -58,7 +58,7 @@ export default async function Home() {
           </div>
         </header>
 
-        {/* LAYANAN UNGGULAN STATIS (Sesuai File Asli) */}
+        {/* LAYANAN UNGGULAN STATIS */}
         <section id="layanan" className="py-5 mt-4">
           <div className="container py-4">
             <h2 className="text-center section-title">Program Layanan Kesehatan</h2>
@@ -119,8 +119,7 @@ export default async function Home() {
                         <Link href={`/post/${p.slug}`} className="text-decoration-none">
                           <h3 className="fw-bold h5 mb-3 text-dark">{p.title}</h3>
                         </Link>
-                        {/* Menghapus tag HTML dan memotong teks untuk preview */}
-                        <div className="text-muted small flex-grow-1 mb-4" dangerouslySetInnerHTML={{ __html: p.content.substring(0, 100) + '...' }} />
+                        <div className="text-muted small flex-grow-1 mb-4" dangerouslySetInnerHTML={{ __html: String(p.content).substring(0, 100) + '...' }} />
                         <div className="d-flex gap-2 mt-auto">
                           <Link href={`/post/${p.slug}`} className="btn btn-outline-primary btn-sm flex-grow-1 rounded-pill">
                             Baca Selengkapnya
@@ -178,11 +177,11 @@ export default async function Home() {
           <div className="mb-4">
             <img src="https://lh3.googleusercontent.com/d/1lmHDe6r7V4bp3xdRNqfQyuzqREGYe29o" alt="Logo Puskesmas Nelayan Footer" height="70" className="bg-white rounded-circle p-2 shadow" />
           </div>
-          <h5 className="fw-bold mb-2">Puskesmas Nelayan Kabupaten Gresik</h5>
+          <h5 className="fw-bold mb-2">{brandName}</h5>
           <p className="mb-4 text-secondary small">Sahabat kesehatan terpercaya untuk masyarakat pesisir, tumbuh kembang anak, dan gaya hidup sehat keluarga Anda.</p>
           
           <div className="seo-areas mt-4 mb-4 p-3 bg-secondary bg-opacity-10 rounded">
-            <span className="d-block mb-1 fw-bold text-light">Jangkauan Layanan Puskesmas Nelayan Kabupaten Gresik:</span>
+            <span className="d-block mb-1 fw-bold text-light">Jangkauan Layanan {brandName}:</span>
             <span style={{ wordWrap: 'break-word' }}>Bungah, Dukun, Kebomas, Manyar, Panceng, Sidayu, Ujungpangkah, Sangkapura, Tambak, dan seluruh wilayah pesisir Kabupaten Gresik.</span>
           </div>
           
@@ -191,7 +190,7 @@ export default async function Home() {
           </div>
           
           <hr className="border-secondary mb-3 opacity-25" />
-          <p className="mb-1 small text-secondary">© 2026 Puskesmas Nelayan Kabupaten Gresik. Hak Cipta Dilindungi.</p>
+          <p className="mb-1 small text-secondary">© 2026 {brandName}. Hak Cipta Dilindungi.</p>
         </div>
       </footer>
     </div>

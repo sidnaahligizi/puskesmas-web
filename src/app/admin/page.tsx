@@ -7,14 +7,13 @@ export default async function AdminDashboard() {
   const cookieStore = await cookies();
   if (!cookieStore.get("is_admin")) redirect("/login");
 
-  // Ambil Data Statistik & Pengaturan Saat Ini
+  // PERBAIKAN: Membungkus hasil database dengan String()
   const { rows: viewsRow } = await db.execute("SELECT value FROM site_settings WHERE key = 'page_views'");
-  const totalViews = viewsRow[0]?.value || 0;
+  const totalViews = String(viewsRow[0]?.value || "0");
   
   const { rows: brandRow } = await db.execute("SELECT value FROM site_settings WHERE key = 'brand_name'");
-  const currentBrand = brandRow[0]?.value || "Puskesmas Nelayan";
+  const currentBrand = String(brandRow[0]?.value || "Puskesmas Nelayan");
 
-  // FUNGSI 1: Simpan Berita & Foto
   async function addPost(formData: FormData) {
     "use server";
     const title = formData.get("title") as string;
@@ -22,7 +21,6 @@ export default async function AdminDashboard() {
     const type = formData.get("type") as string;
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now();
 
-    // Proses Upload Foto menjadi Base64 (Teks)
     let base64Image = null;
     const imageFile = formData.get("image") as File;
     if (imageFile && imageFile.size > 0) {
@@ -37,7 +35,6 @@ export default async function AdminDashboard() {
     revalidatePath("/");
   }
 
-  // FUNGSI 2: Update Brand
   async function updateBrand(formData: FormData) {
     "use server";
     const newBrand = formData.get("brand_name") as string;
@@ -61,7 +58,6 @@ export default async function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Kolom Kiri: Form Berita */}
         <div className="md:col-span-2 bg-white p-6 rounded-xl shadow-md border border-gray-200">
           <h2 className="text-xl font-bold mb-4 text-black border-b pb-2">✍️ Tambah Konten Baru</h2>
           <form action={addPost} className="space-y-4">
@@ -80,7 +76,6 @@ export default async function AdminDashboard() {
               </div>
               <div>
                 <label className="block text-gray-700 text-sm font-bold mb-1">Upload Foto (Opsional)</label>
-                {/* Catatan: Karena kita simpan di DB, disarankan ukuran foto di bawah 2MB */}
                 <input type="file" name="image" accept="image/*" className="w-full border p-2 rounded-lg text-black bg-gray-50" />
               </div>
             </div>
@@ -92,7 +87,6 @@ export default async function AdminDashboard() {
           </form>
         </div>
 
-        {/* Kolom Kanan: Pengaturan Brand */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200 h-fit">
           <h2 className="text-xl font-bold mb-4 text-black border-b pb-2">⚙️ Pengaturan Web</h2>
           <form action={updateBrand} className="space-y-4">
