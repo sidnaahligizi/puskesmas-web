@@ -9,7 +9,6 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Mengambil semua pengaturan dari database
   const { rows } = await db.execute("SELECT * FROM site_settings");
   const settings: Record<string, string> = {};
   rows.forEach((row: any) => { settings[row.key] = row.value; });
@@ -27,14 +26,22 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           body { background-color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
           .top-bar { background-color: #3b82f6; color: white; padding: 8px 0; font-size: 0.85rem; }
           .navbar { background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 15px 0; }
-          .nav-link { font-weight: 600; color: #333 !important; margin: 0 5px; }
+          .nav-link { font-weight: 600; color: #333 !important; margin: 0 5px; transition: 0.3s; }
           .nav-link:hover { color: #3b82f6 !important; }
+          
+          /* FIX DROPDOWN NEXT.JS */
+          @media (min-width: 992px) {
+            .dropdown:hover .dropdown-menu { display: block; margin-top: 0; animation: fadeIn 0.3s ease; }
+          }
+          @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+          
           .footer-dark { background-color: #1e293b; color: #cbd5e1; padding: 60px 0 20px; }
           .content-min-height { min-height: 70vh; padding-top: 130px; }
+          .social-circle { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); border-radius: 50%; transition: 0.3s; color: white; text-decoration: none; }
+          .social-circle:hover { background: #3b82f6; color: white; transform: translateY(-3px); }
         `}} />
       </head>
       <body>
-        {/* TOP BAR BIRU (Seperti Dinkes) */}
         <div className="top-bar fixed-top">
           <div className="container d-flex justify-content-between align-items-center flex-wrap">
             <div><i className="fa-solid fa-location-dot me-2"></i>{settings['address']}</div>
@@ -45,83 +52,87 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </div>
 
-        {/* MAIN MENU NAVBAR */}
         <nav className="navbar navbar-expand-lg fixed-top" style={{ marginTop: '35px' }}>
           <div className="container">
             <Link href="/" className="navbar-brand d-flex align-items-center">
               <img src={logoUrl} alt="Logo" height="50" className="me-2" />
-              <span className="fw-bold text-dark">{brandName}</span>
+              <span className="fw-bold text-dark fs-4">{brandName}</span>
             </Link>
-            <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button className="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
               <span className="navbar-toggler-icon"></span>
             </button>
             <div className="collapse navbar-collapse" id="navbarNav">
               <ul className="navbar-nav ms-auto align-items-center">
                 <li className="nav-item"><Link className="nav-link" href="/">Home</Link></li>
                 <li className="nav-item dropdown">
-                  <a className="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Profil</a>
-                  <ul className="dropdown-menu">
-                    <li><Link className="dropdown-item" href="#">Visi Misi</Link></li>
-                    <li><Link className="dropdown-item" href="#">Struktur Organisasi</Link></li>
+                  <span className="nav-link dropdown-toggle cursor-pointer" style={{cursor: 'pointer'}}>Profil</span>
+                  <ul className="dropdown-menu border-0 shadow-sm rounded-3">
+                    <li><Link className="dropdown-item py-2" href="/#visi-misi">Visi & Misi</Link></li>
+                    <li><Link className="dropdown-item py-2" href="#">Struktur Organisasi</Link></li>
                   </ul>
                 </li>
                 <li className="nav-item dropdown">
-                  <a className="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Layanan</a>
-                  <ul className="dropdown-menu">
-                    <li><Link className="dropdown-item" href="#">Layanan Medis</Link></li>
-                    <li><Link className="dropdown-item" href="#">Gizi & Anak</Link></li>
+                  <span className="nav-link dropdown-toggle cursor-pointer" style={{cursor: 'pointer'}}>Layanan</span>
+                  <ul className="dropdown-menu border-0 shadow-sm rounded-3">
+                    <li><Link className="dropdown-item py-2" href="#">Layanan Medis</Link></li>
+                    <li><Link className="dropdown-item py-2" href="#">Gizi & Anak</Link></li>
                   </ul>
                 </li>
                 <li className="nav-item"><Link className="nav-link" href="/#berita">Berita</Link></li>
                 <li className="nav-item"><Link className="nav-link" href="#">PPID</Link></li>
-                <li className="nav-item"><Link className="nav-link" href="#">Kontak</Link></li>
-                <li className="nav-item ms-3"><Link className="btn btn-outline-primary btn-sm rounded-pill" href="/login"><i className="fa-solid fa-lock me-1"></i> Admin</Link></li>
+                <li className="nav-item ms-lg-3 mt-3 mt-lg-0">
+                  <a className="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" href={settings['action_link'] || '#'} target="_blank">
+                    {settings['action_title'] || 'Daftar Sekarang'}
+                  </a>
+                </li>
               </ul>
             </div>
           </div>
         </nav>
 
-        {/* KONTEN HALAMAN (Berubah-ubah sesuai URL) */}
         <div className="content-min-height">
           {children}
         </div>
 
-        {/* FOOTER GLOBAL */}
         <footer className="footer-dark">
           <div className="container">
             <div className="row g-4 mb-5">
-              <div className="col-lg-4">
+              <div className="col-lg-5">
                 <img src={logoUrl} alt="Logo" height="60" className="bg-white p-1 rounded mb-3" />
-                <h5 className="text-white fw-bold">{brandName}</h5>
-                <p className="small mb-3">{settings['profil_teks']}</p>
-                <div className="d-flex gap-3">
-                  <a href={settings['facebook']} className="text-white fs-4"><i className="fa-brands fa-facebook"></i></a>
-                  <a href={settings['instagram']} className="text-white fs-4"><i className="fa-brands fa-instagram"></i></a>
+                <h4 className="text-white fw-bold mb-3">{brandName}</h4>
+                <p className="small mb-4 pe-md-5" style={{ lineHeight: '1.8' }}>{settings['profil_teks']}</p>
+                <div className="d-flex gap-2">
+                  {settings['facebook'] && <a href={settings['facebook']} className="social-circle"><i className="fa-brands fa-facebook-f"></i></a>}
+                  {settings['instagram'] && <a href={settings['instagram']} className="social-circle"><i className="fa-brands fa-instagram"></i></a>}
+                  {settings['tiktok'] && <a href={settings['tiktok']} className="social-circle"><i className="fa-brands fa-tiktok"></i></a>}
+                  {settings['youtube'] && <a href={settings['youtube']} className="social-circle"><i className="fa-brands fa-youtube"></i></a>}
+                  {settings['whatsapp'] && <a href={`https://wa.me/${settings['whatsapp']}`} className="social-circle"><i className="fa-brands fa-whatsapp"></i></a>}
                 </div>
               </div>
-              <div className="col-lg-4">
-                <h5 className="text-white fw-bold mb-3">Kontak Kami</h5>
+              <div className="col-lg-3">
+                <h5 className="text-white fw-bold mb-4">Kontak Cepat</h5>
                 <ul className="list-unstyled small">
-                  <li className="mb-2"><i className="fa-solid fa-location-dot me-2 text-primary"></i> {settings['address']}</li>
-                  <li className="mb-2"><i className="fa-solid fa-phone me-2 text-primary"></i> {settings['phone']}</li>
-                  <li className="mb-2"><i className="fa-solid fa-envelope me-2 text-primary"></i> {settings['email']}</li>
+                  <li className="mb-3 d-flex"><i className="fa-solid fa-location-dot mt-1 me-3 text-primary"></i> <span>{settings['address']}</span></li>
+                  <li className="mb-3 d-flex"><i className="fa-solid fa-phone mt-1 me-3 text-primary"></i> <span>{settings['phone']}</span></li>
+                  <li className="mb-3 d-flex"><i className="fa-solid fa-envelope mt-1 me-3 text-primary"></i> <span>{settings['email']}</span></li>
                 </ul>
               </div>
-              <div className="col-lg-4">
-                <h5 className="text-white fw-bold mb-3">Link Terkait</h5>
-                <ul className="list-unstyled small">
-                  <li className="mb-2"><a href="#" className="text-decoration-none text-light">Pemerintah Kabupaten Gresik</a></li>
-                  <li className="mb-2"><a href="#" className="text-decoration-none text-light">Dinas Kesehatan Gresik</a></li>
-                  <li className="mb-2"><a href="#" className="text-decoration-none text-light">Kementerian Kesehatan RI</a></li>
-                </ul>
+              <div className="col-lg-4 text-lg-end">
+                <h5 className="text-white fw-bold mb-4">Akses Internal</h5>
+                <Link className="btn btn-outline-light rounded-pill px-4 mb-4" href="/login">
+                  <i className="fa-solid fa-lock me-2"></i> Login Admin
+                </Link>
+                <div className="bg-dark bg-opacity-50 p-3 rounded-3 d-inline-block text-start">
+                  <span className="d-block small text-muted mb-1">Statistik Pengunjung</span>
+                  <h3 className="text-white mb-0 fw-bold"><i className="fa-solid fa-chart-simple text-primary me-2"></i> {settings['page_views'] || 0}</h3>
+                </div>
               </div>
             </div>
-            <div className="border-top border-secondary pt-3 text-center small">
-              © 2026 {brandName}. Hak Cipta Dilindungi. | Pengunjung: {settings['page_views'] || 0}
+            <div className="border-top border-secondary border-opacity-25 pt-4 text-center small text-muted">
+              © 2026 {brandName}. Hak Cipta Dilindungi.
             </div>
           </div>
         </footer>
-
         <Script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" strategy="lazyOnload" />
       </body>
     </html>
