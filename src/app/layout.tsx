@@ -11,10 +11,14 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { rows: settingRows } = await db.execute("SELECT * FROM site_settings");
   const settings: Record<string, string> = {};
-  settingRows.forEach((row: any) => { settings[row.key] = row.value; });
+  settingRows.forEach((row: any) => { settings[row.key] = String(row.value); });
 
-  // Mengambil menu navigasi dari database
+  // Ambil semua menu, urutkan berdasarkan order_num
   const { rows: menus } = await db.execute("SELECT * FROM menus ORDER BY order_num ASC");
+  
+  // Pisahkan menu utama (parent_id 0) dan sub-menu
+  const parentMenus = menus.filter((m: any) => !m.parent_id || Number(m.parent_id) === 0);
+  const childMenus = menus.filter((m: any) => Number(m.parent_id) > 0);
 
   const brandName = settings['brand_name'] || "Puskesmas Nelayan";
   const logoUrl = settings['logo_url'] || "https://lh3.googleusercontent.com/d/1lmHDe6r7V4bp3xdRNqfQyuzqREGYe29o";
@@ -31,6 +35,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           .navbar { background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 15px 0; }
           .nav-link { font-weight: 600; color: #333 !important; margin: 0 5px; transition: 0.3s; }
           .nav-link:hover { color: #3b82f6 !important; }
+          
+          /* FIX DROPDOWN NEXT.JS */
+          @media (min-width: 992px) {
+            .dropdown:hover .dropdown-menu { display: block; margin-top: 0; animation: fadeIn 0.3s ease; }
+          }
+          @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+          
           .footer-dark { background-color: #1e293b; color: #cbd5e1; padding: 60px 0 20px; }
           .content-min-height { min-height: 70vh; padding-top: 130px; }
           .social-circle { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); border-radius: 50%; transition: 0.3s; color: white; text-decoration: none; }
@@ -59,12 +70,31 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </button>
             <div className="collapse navbar-collapse" id="navbarNav">
               <ul className="navbar-nav ms-auto align-items-center">
-                {/* MENU DINAMIS DARI DATABASE */}
-                {menus.map((m: any) => (
-                  <li className="nav-item" key={m.id}>
-                    <Link className="nav-link" href={m.link}>{m.title}</Link>
-                  </li>
-                ))}
+                
+                {/* RENDER MENU SECARA DINAMIS DENGAN DROPDOWN */}
+                {parentMenus.map((pm: any) => {
+                  // Cek apakah menu induk ini punya anak
+                  const children = childMenus.filter((cm: any) => Number(cm.parent_id) === Number(pm.id));
+                  
+                  if (children.length > 0) {
+                    return (
+                      <li className="nav-item dropdown" key={pm.id}>
+                        <Link className="nav-link dropdown-toggle" href={String(pm.link)}>{String(pm.title)}</Link>
+                        <ul className="dropdown-menu border-0 shadow-sm rounded-3">
+                          {children.map((cm: any) => (
+                            <li key={cm.id}><Link className="dropdown-item py-2" href={String(cm.link)}>{String(cm.title)}</Link></li>
+                          ))}
+                        </ul>
+                      </li>
+                    );
+                  } else {
+                    return (
+                      <li className="nav-item" key={pm.id}>
+                        <Link className="nav-link" href={String(pm.link)}>{String(pm.title)}</Link>
+                      </li>
+                    );
+                  }
+                })}
                 
                 <li className="nav-item ms-lg-3 mt-3 mt-lg-0">
                   <a className="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" href={settings['action_link'] || '#'} target="_blank">

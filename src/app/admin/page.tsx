@@ -42,14 +42,18 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
     redirect("/admin?tab=slider");
   }
 
+  // FUNGSI SIMPAN MENU (Diperbarui dengan parent_id)
   async function saveMenu(formData: FormData) {
     "use server";
     const id = formData.get("id") as string;
     const title = formData.get("title") as string;
     const link = formData.get("link") as string;
     const order_num = formData.get("order_num") as string;
-    if (id) await db.execute({ sql: "UPDATE menus SET title=?, link=?, order_num=? WHERE id=?", args: [title, link, order_num, id] });
-    else await db.execute({ sql: "INSERT INTO menus (title, link, order_num) VALUES (?, ?, ?)", args: [title, link, order_num] });
+    const parent_id = formData.get("parent_id") as string;
+    const pId = parent_id ? parseInt(parent_id) : 0;
+
+    if (id) await db.execute({ sql: "UPDATE menus SET title=?, link=?, order_num=?, parent_id=? WHERE id=?", args: [title, link, order_num, pId, id] });
+    else await db.execute({ sql: "INSERT INTO menus (title, link, order_num, parent_id) VALUES (?, ?, ?, ?)", args: [title, link, order_num, pId] });
     revalidatePath("/");
     redirect("/admin?tab=menu");
   }
@@ -172,10 +176,19 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
 
     if (actionParam === 'add' || actionParam === 'edit') {
       let editData: any = {};
+      let parentMenus = [];
+
       if (actionParam === 'edit' && idParam) {
         const { rows } = await db.execute({ sql: `SELECT * FROM ${tableName} WHERE id = ?`, args: [idParam] });
         if (rows.length > 0) editData = rows[0];
       }
+
+      // Khusus untuk Menu, ambil daftar Menu Utama untuk opsi Parent
+      if (tab === 'menu') {
+        const { rows } = await db.execute("SELECT id, title FROM menus WHERE parent_id = 0 OR parent_id IS NULL ORDER BY order_num ASC");
+        parentMenus = rows;
+      }
+
       mainContent = (
         <div className="bg-white p-5 rounded-4 shadow-sm">
           <h4 className="fw-bold mb-4 border-bottom pb-3 text-capitalize">{actionParam === 'edit' ? 'Edit' : 'Tambah'} {tab}</h4>
@@ -193,6 +206,19 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
               <>
                 <div className="col-md-6"><label className="fw-bold small">Nama Menu</label><input name="title" defaultValue={editData.title} required className="form-control" /></div>
                 <div className="col-md-6"><label className="fw-bold small">URL Link (contoh: /#layanan)</label><input name="link" defaultValue={editData.link} required className="form-control" /></div>
+                
+                {/* FITUR BARU: PILIH INDUK MENU */}
+                <div className="col-md-8">
+                  <label className="fw-bold small text-primary">Jadikan Sub-Menu dari: (Opsional)</label>
+                  <select name="parent_id" defaultValue={editData.parent_id || 0} className="form-select border-primary">
+                    <option value="0">-- Ini adalah Menu Utama --</option>
+                    {parentMenus.map((pm: any) => (
+                      <option key={pm.id} value={pm.id}>{String(pm.title)}</option>
+                    ))}
+                  </select>
+                  <small className="text-muted">Jika dipilih, menu ini akan muncul di bawah menu induk (Dropdown).</small>
+                </div>
+
                 <div className="col-md-4"><label className="fw-bold small">Nomor Urut</label><input type="number" name="order_num" defaultValue={editData.order_num} required className="form-control" /></div>
               </>
             )}
@@ -209,7 +235,21 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
         </div>
       );
     } else {
-      const { rows } = await db.execute(`SELECT * FROM ${tableName} ORDER BY id DESC`);
+      let rows = [];
+      if(tab === 'menu') {
+        // Ambil menu dan tampilkan parentnya jika ada
+        const res = await db.execute(`
+          SELECT m1.*, m2.title as parent_title 
+          FROM menus m1 
+          LEFT JOIN menus m2 ON m1.parent_id = m2.id 
+          ORDER BY m1.parent_id ASC, m1.order_num ASC
+        `);
+        rows = res.rows;
+      } else {
+        const res = await db.execute(`SELECT * FROM ${tableName} ORDER BY id DESC`);
+        rows = res.rows;
+      }
+
       mainContent = (
         <div className="bg-white p-4 rounded-4 shadow-sm">
           <div className="d-flex justify-content-between align-items-center mb-4">
@@ -220,7 +260,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
             <thead className="table-light">
               <tr>
                 {tab === 'slider' && <><th>GAMBAR</th><th>JUDUL</th><th>DESKRIPSI</th></>}
-                {tab === 'menu' && <><th>URUTAN</th><th>NAMA MENU</th><th>LINK</th></>}
+                {tab === 'menu' && <><th>URUTAN</th><th>NAMA MENU</th><th>POSISI</th><th>LINK</th></>}
                 {tab === 'layanan' && <><th>IKON</th><th>JUDUL</th><th>DESKRIPSI</th></>}
                 <th>AKSI</th>
               </tr>
@@ -229,7 +269,16 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
               {rows.map((r:any) => (
                 <tr key={r.id}>
                   {tab === 'slider' && <><td><img src={String(r.image_url)} width="60" className="rounded" alt="slider"/></td><td className="fw-bold">{String(r.title)}</td><td>{String(r.description)}</td></>}
-                  {tab === 'menu' && <><td>{String(r.order_num)}</td><td className="fw-bold">{String(r.title)}</td><td>{String(r.link)}</td></>}
+                  {tab === 'menu' && <>
+                    <td>{String(r.order_num)}</td>
+                    <td className="fw-bold">{String(r.title)}</td>
+                    <td>
+                      {r.parent_id && r.parent_id !== 0 && r.parent_id !== '0' 
+                        ? <span className="badge bg-info text-dark"><i className="fa-solid fa-level-up-alt fa-rotate-90 me-1"></i> Sub dari: {String(r.parent_title)}</span>
+                        : <span className="badge bg-primary">Menu Utama</span>}
+                    </td>
+                    <td>{String(r.link)}</td>
+                  </>}
                   {tab === 'layanan' && <><td><i className={`${String(r.icon)} fs-3 text-primary`}></i></td><td className="fw-bold">{String(r.title)}</td><td>{String(r.description)}</td></>}
                   <td>
                     <div className="d-flex gap-2">
@@ -263,7 +312,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
             <div className="col-12">
               <label className="fw-bold small">Kategori</label>
               <select name="type" defaultValue={editData.type || 'Berita'} className="form-select">
-                <option value="Berita">Berita</option><option value="Program">Program</option><option value="Layanan">Layanan</option>
+                <option value="Berita">Berita</option><option value="Program">Program</option><option value="Layanan">Layanan</option><option value="Pengumuman">Pengumuman</option>
               </select>
             </div>
             <div className="col-12">
