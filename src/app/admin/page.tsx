@@ -53,6 +53,11 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
   if (tab === 'dashboard') {
     const { rows: vRow } = await db.execute("SELECT value FROM site_settings WHERE key = 'page_views'");
     const { rows: pRow } = await db.execute("SELECT COUNT(*) as total FROM posts");
+    
+    // PERBAIKAN: Membungkus data dengan String()
+    const totalViews = String(vRow[0]?.value || "0");
+    const totalPosts = String(pRow[0]?.total || "0");
+
     mainContent = (
       <div>
         <h2 className="fw-bolder text-dark mb-2">Monitoring Viewers</h2>
@@ -61,13 +66,13 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
           <div className="col-md-6">
             <div className="bg-white p-4 rounded-4 shadow-sm border-start border-4 border-success d-flex align-items-center">
               <div className="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center me-4" style={{width:'60px',height:'60px'}}><i className="fa-solid fa-users fa-2x"></i></div>
-              <div><h6 className="text-muted fw-bold mb-1">KUNJUNGAN WEB KESELURUHAN</h6><h2 className="fw-bolder mb-0">{vRow[0]?.value || 0}</h2></div>
+              <div><h6 className="text-muted fw-bold mb-1">KUNJUNGAN WEB KESELURUHAN</h6><h2 className="fw-bolder mb-0">{totalViews}</h2></div>
             </div>
           </div>
           <div className="col-md-6">
             <div className="bg-white p-4 rounded-4 shadow-sm border-start border-4 border-primary d-flex align-items-center">
               <div className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-4" style={{width:'60px',height:'60px'}}><i className="fa-solid fa-eye fa-2x"></i></div>
-              <div><h6 className="text-muted fw-bold mb-1">TOTAL KONTEN PROGRAM</h6><h2 className="fw-bolder mb-0">{pRow[0]?.total || 0}</h2></div>
+              <div><h6 className="text-muted fw-bold mb-1">TOTAL KONTEN PROGRAM</h6><h2 className="fw-bolder mb-0">{totalPosts}</h2></div>
             </div>
           </div>
         </div>
@@ -78,8 +83,8 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
   else if (tab === 'pengaturan') {
     mainContent = (
       <div className="bg-white p-5 rounded-4 shadow-sm">
-        <h3 className="fw-bold mb-4">Data Pengaturan Teks (Buka File Kode Tahap 5 Sebelumnya)</h3>
-        <div className="alert alert-info">Untuk pengaturan teks kompleks, gunakan form di Dashboard versi sebelumnya, atau Anda dapat merombak kode ini sesuai kebutuhan spesifik. Data terhubung otomatis ke Turso.</div>
+        <h3 className="fw-bold mb-4">Data Pengaturan Teks</h3>
+        <div className="alert alert-info">Untuk pengaturan teks kompleks, gunakan form di Dashboard versi sebelumnya, atau hubungi pengembang untuk kustomisasi lanjutan. Data terhubung otomatis ke Turso.</div>
       </div>
     );
   }
@@ -97,12 +102,12 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
           <tbody>
             {rows.map((r:any) => (
               <tr key={r.id}>
-                <td>{r.id}</td>
-                <td><img src={r.image_url} width="60" className="rounded" alt="slider" /></td>
-                <td className="fw-bold">{r.title}</td>
-                <td className="text-muted small">{r.description}</td>
+                <td>{String(r.id)}</td>
+                <td><img src={String(r.image_url)} width="60" className="rounded" alt="slider" /></td>
+                <td className="fw-bold">{String(r.title)}</td>
+                <td className="text-muted small">{String(r.description)}</td>
                 <td>
-                  <form action={deleteData}><input type="hidden" name="table" value="sliders"/><input type="hidden" name="id" value={r.id}/><button className="btn btn-sm btn-danger"><i className="fa-solid fa-trash"></i></button></form>
+                  <form action={deleteData}><input type="hidden" name="table" value="sliders"/><input type="hidden" name="id" value={String(r.id)}/><button className="btn btn-sm btn-danger"><i className="fa-solid fa-trash"></i></button></form>
                 </td>
               </tr>
             ))}
@@ -139,9 +144,9 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
             <tbody>
               {rows.map((r:any) => (
                 <tr key={r.id}>
-                  <td className="fw-bold">{r.title}</td><td><span className="badge bg-secondary">{r.type}</span></td>
-                  <td>{r.image_url ? <img src={r.image_url} width="50" height="50" className="rounded object-fit-cover" alt="img"/> : '-'}</td>
-                  <td><form action={deleteData}><input type="hidden" name="table" value="posts"/><input type="hidden" name="id" value={r.id}/><button className="btn btn-sm btn-danger"><i className="fa-solid fa-trash"></i></button></form></td>
+                  <td className="fw-bold">{String(r.title)}</td><td><span className="badge bg-secondary">{String(r.type)}</span></td>
+                  <td>{r.image_url ? <img src={String(r.image_url)} width="50" height="50" className="rounded object-fit-cover" alt="img"/> : '-'}</td>
+                  <td><form action={deleteData}><input type="hidden" name="table" value="posts"/><input type="hidden" name="id" value={String(r.id)}/><button className="btn btn-sm btn-danger"><i className="fa-solid fa-trash"></i></button></form></td>
                 </tr>
               ))}
             </tbody>
@@ -153,7 +158,6 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f1f5f9' }}>
-      {/* TRIK CSS: Menyembunyikan Desain Layout Publik & Membuat Desain Sidebar Admin */}
       <style dangerouslySetInnerHTML={{ __html: `
         .public-topbar, .public-navbar, .public-footer { display: none !important; }
         .public-content { padding: 0 !important; min-height: 0 !important; }
@@ -165,7 +169,6 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
         .admin-main { margin-left: 260px; padding: 40px; width: calc(100% - 260px); }
       `}} />
 
-      {/* SIDEBAR PERSIS SEPERTI GAMBAR */}
       <aside className="admin-sidebar shadow-lg">
         <div className="p-4 text-center border-bottom border-secondary border-opacity-25 mb-3">
             <h4 className="fw-bolder text-white mb-0 text-uppercase tracking-wider">PUSKESMAS ADMIN</h4>
@@ -188,7 +191,6 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
         </form>
       </aside>
 
-      {/* KONTEN UTAMA */}
       <main className="admin-main">
         {mainContent || <div className="alert alert-info">Menu ini sedang dalam tahap pengembangan.</div>}
       </main>
